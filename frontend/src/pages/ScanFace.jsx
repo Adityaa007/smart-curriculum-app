@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import * as faceapi from "face-api.js";
@@ -43,6 +44,7 @@ function StatusCard({ type, message }) {
 
 /* ── Main Export ───────────────────────────────────────────────── */
 export default function ScanFace() {
+  useTitle("Scan Face");
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
 

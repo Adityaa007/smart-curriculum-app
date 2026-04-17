@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -168,6 +169,7 @@ function PlaceholderPage({ title, icon: Icon }) {
 
 // ── Main Export ────────────────────────────────────────────────
 export default function TeacherDashboard() {
+  useTitle("Dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
   
   return (

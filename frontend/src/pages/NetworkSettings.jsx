@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect } from "react";
 import {
   doc,
@@ -10,6 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { Activity, Check, AlertCircle, Globe } from "lucide-react";
 
 export default function NetworkSettings() {
+  useTitle("Settings");
   const { currentUser } = useAuth();
 
   const [ipStart, setIpStart] = useState("");

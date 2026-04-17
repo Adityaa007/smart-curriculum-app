@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect, useMemo } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
@@ -19,6 +20,7 @@ const getThirtyDaysAgo = () => {
 const getToday = () => new Date().toISOString().split("T")[0];
 
 export default function TeacherReports() {
+  useTitle("Reports");
   const { currentUser } = useAuth();
   
   // ── 1. Data States ───────────────────────────────────────────────────────

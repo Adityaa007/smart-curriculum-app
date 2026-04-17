@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect, useRef } from "react";
 import { collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, addDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
@@ -22,6 +23,7 @@ function getDifficultyColor(diff) {
 
 // ── Main Page Component ───────────────────────────────────────────────────────
 export default function FreePeriodTasks() {
+  useTitle("Tasks");
   const { currentUser, userProfile } = useAuth();
   const [todayClasses, setTodayClasses] = useState([]);
   const [loadingSchedule, setLoadingSchedule] = useState(true);

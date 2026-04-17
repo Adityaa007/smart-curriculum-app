@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect, useRef } from "react";
 import { collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, serverTimestamp, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
@@ -49,6 +50,7 @@ function timeToMinutes(timeStr) {
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function DailyRoutine() {
+  useTitle("Daily Routine");
   const { currentUser, userProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);

@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect } from "react";
 import {
   collection, addDoc, deleteDoc, doc,
@@ -18,6 +19,7 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 const DAY_SHORT = { Monday:"Mon", Tuesday:"Tue", Wednesday:"Wed", Thursday:"Thu", Friday:"Fri", Saturday:"Sat" };
 
 export default function TimetablePage() {
+  useTitle("Timetable");
   const { currentUser, userProfile } = useAuth();
 
   const [entries, setEntries]   = useState([]);

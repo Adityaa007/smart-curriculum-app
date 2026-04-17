@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
@@ -5,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { Star, Save } from "lucide-react";
 
 export default function CareerGoals() {
+  useTitle("Career Profile");
   const { currentUser, userProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);

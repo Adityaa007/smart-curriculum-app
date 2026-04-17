@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -730,6 +731,7 @@ function DashboardView({ onManual }) {
 
 // ── Main Export ───────────────────────────────────────────────────────────────
 export default function AttendancePage() {
+  useTitle("Attendance");
   const [mode, setMode] = useState(null); // null | "manual"
 
   return (

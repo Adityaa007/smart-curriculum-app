@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
@@ -49,6 +50,7 @@ function StatusCard({ type, message }) {
 
 // ── Main Export ───────────────────────────────────────────────────────────────
 export default function ScanQR() {
+  useTitle("Scan QR");
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
   const [scanning, setScanning]   = useState(false);

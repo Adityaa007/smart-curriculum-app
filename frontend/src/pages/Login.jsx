@@ -1,9 +1,11 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { LockKeyhole, Mail, GraduationCap } from "lucide-react";
 
 export default function Login() {
+  useTitle("Login");
   const { login, currentUser, userProfile, loading } = useAuth();
   const navigate = useNavigate();
 

@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect } from "react";
 import {
   collection,
@@ -204,6 +205,7 @@ function LiveSession({ session, onEnd }) {
 
 /* ── Main Export ──────────────────────────────────────────────── */
 export default function FaceAttendance() {
+  useTitle("Face Attendance");
   const { currentUser, userProfile } = useAuth();
 
   const [timetableEntries, setEntries] = useState([]);

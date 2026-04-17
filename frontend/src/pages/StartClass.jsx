@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -399,6 +400,7 @@ function ActiveSession({ session, onEnd }) {
 
 // ── Main Export ───────────────────────────────────────────────────────────────
 export default function StartClass() {
+  useTitle("Start Class");
   const { currentUser, userProfile } = useAuth();
   const [session, setSession]           = useState(null);
   const [timetableEntries, setEntries]  = useState([]);

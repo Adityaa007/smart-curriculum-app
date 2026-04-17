@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import * as faceapi from "face-api.js";
 import {
@@ -296,6 +297,7 @@ function WebcamCapture({ onCapture, capturedCount, maxCaptures, onClose }) {
 
 /* ── Main Page ─────────────────────────────────────────────────── */
 export default function FaceRegister() {
+  useTitle("Face Registration");
   const { currentUser, userProfile } = useAuth();
   const { loaded: modelsLoaded, error: modelError, progress: modelProgress } = useLoadModels();
 

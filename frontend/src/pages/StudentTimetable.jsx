@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
@@ -118,6 +119,7 @@ function WeeklyTable({ byDay, activeDays }) {
 
 // ── Main Export ─────────────────────────────────────────────────────────────
 export default function StudentTimetable() {
+  useTitle("My Timetable");
   const { userProfile } = useAuth();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);

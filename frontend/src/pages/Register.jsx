@@ -1,9 +1,11 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { LockKeyhole, Mail, User, GraduationCap, IdCard, Layers, Eye, EyeOff, ChevronDown, Check, Tag } from "lucide-react";
 
 export default function Register() {
+  useTitle("Register");
   const { register } = useAuth();
   const navigate = useNavigate();
 

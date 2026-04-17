@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect, useMemo } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
@@ -61,6 +62,7 @@ function CircularProgress({ percent }) {
 
 // ── Main Page Component ────────────────────────────────────────
 export default function StudentAttendance() {
+  useTitle("My Attendance");
   const { currentUser, userProfile } = useAuth();
   
   const [attendance, setAttendance] = useState([]);

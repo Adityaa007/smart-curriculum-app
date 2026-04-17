@@ -1,3 +1,4 @@
+import useTitle from "../hooks/useTitle";
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { collection, query, where, orderBy, onSnapshot, getDocs } from "firebase/firestore";
@@ -459,6 +460,7 @@ function PlaceholderPage({ title, icon: Icon }) {
 
 // ── Main Export ────────────────────────────────────────────────
 export default function StudentDashboard() {
+  useTitle("Dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
