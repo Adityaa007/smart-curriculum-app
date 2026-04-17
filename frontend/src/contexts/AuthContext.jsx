@@ -7,6 +7,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { generateRegistrationNumberTransaction } from "../lib/transactions";
 
 const AuthContext = createContext(null);
 
@@ -102,7 +103,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Register new user + save profile to Firestore
-  async function register({ name, email, password, role, rollNumber, section }) {
+  async function register({ name, email, password, role }) {
     const credential = await createUserWithEmailAndPassword(auth, email, password);
     const uid = credential.user.uid;
 
@@ -114,8 +115,10 @@ export function AuthProvider({ children }) {
     };
 
     if (role === "student") {
-      profile.rollNumber = rollNumber || "";
-      profile.section = section || "";
+      profile.registrationNumber = await generateRegistrationNumberTransaction();
+      profile.assignedSection = null;
+      profile.assignedSectionId = null;
+      profile.rollNumber = null;
       profile.attendance = 85;
     }
 

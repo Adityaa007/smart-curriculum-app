@@ -9,6 +9,7 @@ import StudentTimetable from "./StudentTimetable";
 import ScanQR from "./ScanQR";
 import ScanFace from "./ScanFace";
 import StudentAttendance from "./StudentAttendance";
+import JoinSection from "../components/JoinSection";
 import CareerGoals from "./CareerGoals";
 import FreePeriodTasks from "./FreePeriodTasks";
 import DailyRoutine from "./DailyRoutine";

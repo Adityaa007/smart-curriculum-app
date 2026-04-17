@@ -10,7 +10,8 @@ import FaceRegister from "./FaceRegister";
 import FaceAttendance from "./FaceAttendance";
 import NetworkSettings from "./NetworkSettings";
 import TeacherReports from "./TeacherReports";
-import { Calendar, ClipboardCheck, BarChart, Users, Bell, QrCode, Menu } from "lucide-react";
+import TeacherSections from "./TeacherSections";
+import { Calendar, ClipboardCheck, BarChart, Users, Bell, QrCode, Menu, Layers } from "lucide-react";
 
 // ── Stat Card ──────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, sub, color = "#6366f1" }) {
@@ -148,6 +149,7 @@ function TeacherHome() {
         <QuickAction icon={ClipboardCheck} label="Attendance" description="Mark attendance via QR or Manual" color="#10b981" onClick={() => navigate("/teacher/attendance")} />
         <QuickAction icon={Calendar} label="Manage Timetable" description="Add or remove class entries" color="#8b5cf6" onClick={() => navigate("/teacher/timetable")} />
         <QuickAction icon={BarChart} label="View Reports" description="Student performance analytics" color="#6366f1" onClick={() => navigate("/teacher/reports")} />
+        <QuickAction icon={Layers} label="Manage Sections" description="Create classrooms and codes" color="#3b82f6" onClick={() => navigate("/teacher/sections")} />
       </div>
     </div>
   );
@@ -194,6 +196,7 @@ export default function TeacherDashboard() {
             <Route path="face-attendance" element={<FaceAttendance />} />
             <Route path="network-settings" element={<NetworkSettings />} />
             <Route path="reports" element={<TeacherReports />} />
+            <Route path="sections" element={<TeacherSections />} />
           </Routes>
         </div>
       </main>

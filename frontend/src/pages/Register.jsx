@@ -70,9 +70,7 @@ export default function Register() {
     if (form.password.length < 6) {
       return setError("Password must be at least 6 characters.");
     }
-    if (form.role === "student" && !form.rollNumber) {
-      return setError("Roll number is required for students.");
-    }
+    
 
     setLoading(true);
     try {
@@ -195,37 +193,7 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Student-only Animated Fields */}
-            <div className={`space-y-5 overflow-hidden transition-all duration-500 ease-in-out origin-top ${form.role === 'student' ? 'max-h-[300px] opacity-100 scale-100 mt-5' : 'max-h-0 opacity-0 scale-95 mt-0'}`}>
-              <div>
-                <label className={labelClass}>Roll Number</label>
-                <div className="relative group">
-                  <IdCard size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400/80 pointer-events-none group-focus-within:text-purple-400 transition-colors duration-300" />
-                  <input
-                    name="rollNumber"
-                    type="text"
-                    value={form.rollNumber}
-                    onChange={handleChange}
-                    placeholder="e.g. 21CS001"
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Section / Class</label>
-                <div className="relative group">
-                  <Layers size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400/80 pointer-events-none group-focus-within:text-purple-400 transition-colors duration-300" />
-                  <input
-                    name="section"
-                    type="text"
-                    value={form.section}
-                    onChange={handleChange}
-                    placeholder="e.g. CS-A"
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-            </div>
+            {/* Student-only Fields migrated to Join Flow */}
 
             {/* Password */}
             <div>
