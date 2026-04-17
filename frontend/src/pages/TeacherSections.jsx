@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import useTitle from "../hooks/useTitle";
-import { createSectionTransaction } from "../lib/transactions";
-import { Layers, Plus, Copy, Users } from "lucide-react";
+import { createSectionTransaction, assignStudentToSectionTransaction } from "../lib/transactions";
+import { Layers, Plus, Users, UserPlus, X } from "lucide-react";
 
 export default function TeacherSections() {
   useTitle("Manage Sections");
@@ -17,7 +17,13 @@ export default function TeacherSections() {
   const [form, setForm] = useState({ name: "", year: new Date().getFullYear(), branch: "" });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState("");
+
+  // Assign Modal
+  const [assignModalOpen, setAssignModalOpen] = useState(null); // section object
+  const [unassignedStudents, setUnassignedStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [assigningId, setAssigningId] = useState(null);
+  const [assignError, setAssignError] = useState("");
 
   useEffect(() => {
     if (!currentUser) return;
@@ -53,11 +59,43 @@ export default function TeacherSections() {
     }
   }
 
-  const handleCopy = (code) => {
-    navigator.clipboard.writeText(code);
-    setCopied(code);
-    setTimeout(() => setCopied(""), 2000);
-  };
+  async function handleOpenAssign(sec) {
+    setAssignModalOpen(sec);
+    setLoadingStudents(true);
+    setAssignError("");
+    console.log(`[Assign] Fetching unassigned students for section ${sec.name}...`);
+    try {
+      const q = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("assignedSection", "==", null)
+      );
+      const snap = await getDocs(q);
+      const studentList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`[Assign] Found ${studentList.length} unassigned students`);
+      setUnassignedStudents(studentList);
+    } catch (err) {
+      console.error("[Assign] Failed to fetch students", err);
+      setAssignError("Failed to load students.");
+    } finally {
+      setLoadingStudents(false);
+    }
+  }
+
+  async function handleAssignStudent(studentId, sectionId) {
+    setAssigningId(studentId);
+    setAssignError("");
+    try {
+      console.log(`[Assign] Triggering transaction for ${studentId}...`);
+      await assignStudentToSectionTransaction(sectionId, studentId);
+      setUnassignedStudents(prev => prev.filter(s => s.id !== studentId));
+    } catch (err) {
+      console.error("[Assign] Transaction error", err);
+      setAssignError(err.message || "Failed to assign student.");
+    } finally {
+      setAssigningId(null);
+    }
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
@@ -68,7 +106,7 @@ export default function TeacherSections() {
          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
            <Layers className="text-indigo-400" /> Manage Sections
          </h1>
-         <p className="text-slate-400 text-sm mt-1">Create classrooms and generate global Join Codes for your students.</p>
+         <p className="text-slate-400 text-sm mt-1">Create and manage sections for your students.</p>
        </div>
 
        {/* Create Section Form */}
@@ -104,43 +142,80 @@ export default function TeacherSections() {
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
          {loading ? <p className="text-slate-400 col-span-full">Loading sections...</p> : sections.length === 0 ? <p className="text-slate-500 col-span-full">No active sections deployed yet.</p> : null}
          {sections.map(sec => (
-           <div key={sec.id} className="glass-card p-6 relative overflow-hidden transition-all duration-300 hover:border-white/[0.1] hover:-translate-y-1">
+           <div key={sec.id} className="glass-card p-6 flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:border-white/[0.1] hover:-translate-y-1">
              
-             <div className="flex justify-between items-start mb-6">
-               <div>
-                 <h3 className="text-xl font-bold text-slate-100">{sec.name}</h3>
-                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">{sec.branch} · {sec.year}</p>
-               </div>
-               
-               <div className="text-right">
-                 <p className="text-[9px] font-black text-indigo-400/80 uppercase tracking-[0.2em] mb-1.5">Join Code</p>
-                 <div 
-                   onClick={() => handleCopy(sec.joinCode)}
-                   className="flex items-center gap-2 bg-indigo-500/10 text-indigo-300 px-3 py-1.5 rounded-lg border border-indigo-500/20 cursor-pointer hover:bg-indigo-500/20 transition-all group"
-                 >
-                   <span className="font-mono font-bold tracking-widest text-sm">{sec.joinCode}</span>
-                   {copied === sec.joinCode ? (
-                       <span className="text-emerald-400 text-xs font-bold w-4 h-4 flex items-center justify-center">✓</span>
-                   ) : (
-                       <Copy size={14} className="text-indigo-400/50 group-hover:text-indigo-300" />
-                   )}
-                 </div>
-               </div>
+             <div>
+               <h3 className="text-xl font-bold text-slate-100">{sec.name}</h3>
+               <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1 mb-6">{sec.branch} · {sec.year}</p>
              </div>
              
-             <div className="flex items-center justify-between pt-4 border-t border-white/[0.05]">
+             <div className="flex items-center justify-between mt-auto">
                 <div className="flex items-center gap-2 text-slate-300 text-xs font-semibold">
                   <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center border border-white/[0.05]">
                     <Users size={16} className="text-slate-400"/>
                   </div>
                   <div>
-                    <span className="text-slate-100 font-bold">{sec.rollNumberCounter > 1 ? sec.rollNumberCounter - 1 : 0}</span> Enrolled Students
+                    <span className="text-slate-100 font-bold">{sec.rollNumberCounter > 1 ? sec.rollNumberCounter - 1 : 0}</span> Enrolled
                   </div>
                 </div>
+                
+                <button onClick={() => handleOpenAssign(sec)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wider transition-colors border border-indigo-500/20 cursor-pointer">
+                  <UserPlus size={14} />
+                  Assign
+                </button>
              </div>
            </div>
          ))}
        </div>
+
+       {/* Assign Students Modal */}
+       {assignModalOpen && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(15,23,42,0.8)", backdropFilter: "blur(6px)" }}>
+           <div className="glass-card w-[90%] max-w-lg mx-auto shadow-2xl animate-scale-in p-6 max-h-[85vh] flex flex-col overflow-hidden">
+             
+             <div className="flex items-center justify-between mb-6 shrink-0">
+               <div>
+                 <p className="text-lg font-bold text-slate-100">Assign to {assignModalOpen.name}</p>
+                 <p className="text-xs text-slate-400 mt-0.5">Select a student below to instantly map their roll sequence.</p>
+               </div>
+               <button onClick={() => setAssignModalOpen(null)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer">
+                 <X size={18} />
+               </button>
+             </div>
+
+             {assignError && <div className="shrink-0 mb-4 px-4 py-3 rounded-xl text-[13px] font-medium text-red-300 bg-red-500/10 border border-red-500/20 flex items-center gap-2">{assignError}</div>}
+
+             <div className="flex-1 overflow-y-auto pr-2 space-y-3 thin-scrollbar">
+               {loadingStudents ? (
+                 <div className="py-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></div>
+                    Scanning global unassigned pool...
+                 </div>
+               ) : unassignedStudents.length === 0 ? (
+                 <div className="py-8 text-center text-sm font-semibold text-slate-500 bg-white/[0.02] rounded-2xl border border-white/[0.05]">
+                   No unassigned students found.
+                 </div>
+               ) : (
+                 unassignedStudents.map(student => (
+                   <div key={student.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors">
+                     <div className="min-w-0">
+                       <p className="text-sm font-bold text-slate-200 truncate pr-2">{student.name}</p>
+                       <p className="text-[11px] font-medium text-slate-500 truncate mt-0.5">{student.email}</p>
+                     </div>
+                     <button 
+                       disabled={assigningId === student.id}
+                       onClick={() => handleAssignStudent(student.id, assignModalOpen.id)}
+                       className="shrink-0 ml-3 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 text-[10px] uppercase font-bold tracking-widest px-3 py-1.5 rounded-lg border border-indigo-500/30 transition-all disabled:opacity-50 cursor-pointer"
+                     >
+                       {assigningId === student.id ? "Working..." : "Assign"}
+                     </button>
+                   </div>
+                 ))
+               )}
+             </div>
+           </div>
+         </div>
+       )}
     </div>
   );
 }
