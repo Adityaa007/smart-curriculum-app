@@ -9,7 +9,7 @@ import StudentTimetable from "./StudentTimetable";
 import ScanQR from "./ScanQR";
 import ScanFace from "./ScanFace";
 import StudentAttendance from "./StudentAttendance";
-import JoinSection from "../components/JoinSection";
+
 import CareerGoals from "./CareerGoals";
 import FreePeriodTasks from "./FreePeriodTasks";
 import DailyRoutine from "./DailyRoutine";
@@ -84,7 +84,7 @@ function StudentHome() {
     const q = query(collection(db, "timetable"), orderBy("createdAt", "asc"));
     return onSnapshot(q, (snap) => {
       const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const section = userProfile?.section?.toUpperCase();
+      const section = userProfile?.assignedSection?.toUpperCase();
       const filtered = all
         .filter(
           (e) =>
@@ -100,10 +100,10 @@ function StudentHome() {
   // ── Detect active face attendance session ──
   const [activeFaceSession, setActiveFaceSession] = useState(null);
   useEffect(() => {
-    if (!userProfile?.section) return;
+    if (!userProfile?.assignedSection) return;
     const q = query(
       collection(db, "faceAttendanceSessions"),
-      where("section", "==", userProfile.section),
+      where("section", "==", userProfile.assignedSection),
       where("status", "==", "active")
     );
     return onSnapshot(q, (snap) => {
@@ -142,14 +142,20 @@ function StudentHome() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
+      {!userProfile?.assignedSection && (
+        <div className="mb-6 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm font-medium flex items-center gap-3">
+          <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+          You are not assigned to any section yet.
+        </div>
+      )}
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="badge bg-violet-500/20 text-violet-400 border border-violet-500/30">Student</span>
-              {userProfile?.section && (
-                <span className="badge bg-slate-500/20 text-slate-400 border border-slate-500/30">{userProfile.section}</span>
+              {userProfile?.assignedSection && (
+                <span className="badge bg-slate-500/20 text-slate-400 border border-slate-500/30">{userProfile.assignedSection}</span>
               )}
             </div>
             <h1 className="text-2xl font-bold text-slate-100">
@@ -324,17 +330,26 @@ function StudentHome() {
         
         {/* Attendance Ring */}
         <div className="stat-card flex flex-col items-center justify-center gap-3 p-6 py-8">
-          <AttendanceRing percent={attendance} />
-          <div className="flex items-center gap-2 mt-2">
-             <div className={`badge ${statusColor} text-[10px] uppercase font-bold tracking-wider border`}>{statusLabel}</div>
-             {attendance < 85 && (
-                <span className="text-[16px] animate-bounce" title="Low Attendance Warning">⚠️</span>
-             )}
-          </div>
-          {attendance < 75 && (
-            <p className="text-[10px] text-slate-500 text-center uppercase font-bold max-w-xs mt-1">
-              Need {Math.ceil((0.75 * (100 / (attendance / 100))) - 100)} more sessions to reach 75%
-            </p>
+          {!userProfile?.assignedSection ? (
+            <div className="text-center py-6">
+               <div className="text-slate-500 mb-2 opacity-50 flex justify-center"><ClipboardCheck size={32} /></div>
+               <p className="text-sm font-bold text-slate-400">Section not assigned</p>
+            </div>
+          ) : (
+            <>
+              <AttendanceRing percent={attendance} />
+              <div className="flex items-center gap-2 mt-2">
+                 <div className={"badge " + statusColor + " text-[10px] uppercase font-bold tracking-wider border"}>{statusLabel}</div>
+                 {attendance < 85 && (
+                    <span className="text-[16px] animate-bounce" title="Low Attendance Warning">??</span>
+                 )}
+              </div>
+              {attendance < 75 && (
+                <p className="text-[10px] text-slate-500 text-center uppercase font-bold max-w-xs mt-1">
+                  Need {Math.ceil((0.75 * (100 / (attendance / 100))) - 100)} more sessions to reach 75%
+                </p>
+              )}
+            </>
           )}
         </div>
 
@@ -381,7 +396,7 @@ function StudentHome() {
             </div>
             
             {/* Student ID Info */}
-            {(userProfile?.rollNumber || userProfile?.section) && (
+            {(userProfile?.rollNumber || userProfile?.assignedSection) && (
               <div className="stat-card p-5 flex flex-col gap-4">
                 {userProfile.rollNumber && (
                   <div className="flex justify-between items-center">
@@ -389,10 +404,10 @@ function StudentHome() {
                     <span className="text-sm font-bold text-slate-200 px-3 py-1 bg-slate-800 rounded-lg">{userProfile.rollNumber}</span>
                   </div>
                 )}
-                {userProfile.section && (
+                {userProfile.assignedSection && (
                   <div className="flex justify-between items-center pt-3 border-t border-white/[0.05]">
                     <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Section</span>
-                    <span className="text-sm font-bold text-indigo-300 px-3 py-1 bg-indigo-500/10 rounded-lg">{userProfile.section}</span>
+                    <span className="text-sm font-bold text-indigo-300 px-3 py-1 bg-indigo-500/10 rounded-lg">{userProfile.assignedSection}</span>
                   </div>
                 )}
               </div>
