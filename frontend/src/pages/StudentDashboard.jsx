@@ -100,7 +100,7 @@ function StudentHome() {
   // ── Detect active face attendance session ──
   const [activeFaceSession, setActiveFaceSession] = useState(null);
   useEffect(() => {
-    if (!userProfile?.assignedSection) return;
+    if (userProfile?.assignedSection == null) return;
     const q = query(
       collection(db, "faceAttendanceSessions"),
       where("section", "==", userProfile.assignedSection),
@@ -142,7 +142,7 @@ function StudentHome() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
-      {!userProfile?.assignedSection && (
+      {userProfile?.assignedSection == null && (
         <div className="mb-6 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm font-medium flex items-center gap-3">
           <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
           You are not assigned to any section yet.
@@ -154,7 +154,7 @@ function StudentHome() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="badge bg-violet-500/20 text-violet-400 border border-violet-500/30">Student</span>
-              {userProfile?.assignedSection && (
+              {userProfile?.assignedSection != null && (
                 <span className="badge bg-slate-500/20 text-slate-400 border border-slate-500/30">{userProfile.assignedSection}</span>
               )}
             </div>
@@ -164,19 +164,30 @@ function StudentHome() {
             <p className="text-slate-400 text-sm mt-1">{today}</p>
           </div>
           {/* Mark Attendance button */}
-          <button
-            id="sq-attend-btn"
-            onClick={() => setShowAttendanceModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
-            style={{
-              background: "linear-gradient(135deg,rgba(99,102,241,0.2),rgba(139,92,246,0.2))",
-              border: "1px solid rgba(99,102,241,0.3)",
-              color: "#a78bfa",
-            }}
-          >
-            <ClipboardCheck size={18} />
-            Mark Attendance
-          </button>
+          {userProfile?.assignedSection != null ? (
+            <button
+              id="sq-attend-btn"
+              onClick={() => setShowAttendanceModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+              style={{
+                background: "linear-gradient(135deg,rgba(99,102,241,0.2),rgba(139,92,246,0.2))",
+                border: "1px solid rgba(99,102,241,0.3)",
+                color: "#a78bfa",
+              }}
+            >
+              <ClipboardCheck size={18} />
+              Mark Attendance
+            </button>
+          ) : (
+             <button
+              id="sq-attend-btn"
+              disabled
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold opacity-50 cursor-not-allowed border border-indigo-500/20 bg-indigo-500/10 text-indigo-300"
+            >
+              <ClipboardCheck size={18} />
+              Mark Attendance
+            </button>
+          )}
         </div>
       </div>
 
@@ -330,12 +341,14 @@ function StudentHome() {
         
         {/* Attendance Ring */}
         <div className="stat-card flex flex-col items-center justify-center gap-3 p-6 py-8">
-          {!userProfile?.assignedSection ? (
+          {userProfile?.assignedSection == null && (
             <div className="text-center py-6">
                <div className="text-slate-500 mb-2 opacity-50 flex justify-center"><ClipboardCheck size={32} /></div>
                <p className="text-sm font-bold text-slate-400">Section not assigned</p>
             </div>
-          ) : (
+          )}
+          
+          {userProfile?.assignedSection != null && (
             <>
               <AttendanceRing percent={attendance} />
               <div className="flex items-center gap-2 mt-2">

@@ -67,11 +67,12 @@ export default function TeacherSections() {
     try {
       const q = query(
         collection(db, "users"),
-        where("role", "==", "student"),
-        where("assignedSection", "==", null)
+        where("role", "==", "student")
       );
       const snap = await getDocs(q);
-      const studentList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const studentList = snap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(student => student.assignedSection == null);
       console.log(`[Assign] Found ${studentList.length} unassigned students`);
       setUnassignedStudents(studentList);
     } catch (err) {
