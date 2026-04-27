@@ -1,0 +1,136 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ───────────────────────────────────────────────────────
+
+    // Returns true if the caller is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Returns true if the caller is the owner of a document
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // Returns true if caller's Firestore profile has role == "teacher"
+    function isTeacher() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "teacher";
+    }
+
+    // Returns true if caller's Firestore profile has role == "student"
+    function isStudent() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "student";
+    }
+
+    // ── /users/{uid} ──────────────────────────────────────────────────────────
+    // • Any authenticated user can read any user doc (needed for teacher → student lookups)
+    // • Users can create their own doc (registration flow)
+    // • Users can update their own doc (career goals, profile)
+    // • Teachers can update any user doc (section assignment, roll number)
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isTeacher();
+      allow delete: if false; // no deletion supported
+
+      // /users/{uid}/tasks — personal task subcollection (students)
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // ── /timetable/{entryId} ──────────────────────────────────────────────────
+    // • All authenticated users can read timetable entries
+    // • Only teachers can create, update, or delete timetable entries
+    match /timetable/{entryId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isTeacher();
+    }
+
+    // ── /attendance/{recordId} ────────────────────────────────────────────────
+    // • Students can read their own attendance records
+    // • Teachers can read all attendance records for their classes
+    // • Teachers can create and delete attendance records
+    // • Students can create their own attendance records (QR / WiFi / Face scan)
+    match /attendance/{recordId} {
+      allow read: if isAuthenticated() && (
+        isTeacher() ||
+        resource.data.studentId == request.auth.uid
+      );
+      allow create: if isAuthenticated() && (
+        isTeacher() ||
+        // Student creating their own attendance record
+        (isStudent() && request.resource.data.studentId == request.auth.uid)
+      );
+      allow update: if isTeacher();
+      allow delete: if isTeacher();
+    }
+
+    // ── /sessions/{sessionId} ─────────────────────────────────────────────────
+    // • All authenticated users can read sessions (students need section-based reads)
+    // • Only teachers can create or update sessions
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if isTeacher();
+      allow update: if isTeacher();
+      allow delete: if false;
+    }
+
+    // ── /sections/{sectionId} ─────────────────────────────────────────────────
+    // • All authenticated users can read sections
+    // • Only teachers can create or update sections
+    match /sections/{sectionId} {
+      allow read: if isAuthenticated();
+      allow create: if isTeacher();
+      allow update: if isTeacher();
+      allow delete: if false;
+    }
+
+    // ── /faceDescriptors/{uid} ────────────────────────────────────────────────
+    // • Teachers can read and write face descriptors (registration + recognition)
+    // • Students can read their own face descriptor
+    match /faceDescriptors/{uid} {
+      allow read: if isAuthenticated() && (isTeacher() || isOwner(uid));
+      allow write: if isTeacher();
+    }
+
+    // ── /faceAttendanceSessions/{sessionId} ───────────────────────────────────
+    // • All authenticated users can read face attendance sessions
+    //   (teachers manage them, students listen for active sessions)
+    // • Only teachers can create or update face attendance sessions
+    match /faceAttendanceSessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if isTeacher();
+      allow update: if isTeacher();
+      allow delete: if false;
+    }
+
+    // ── /routines/{routineId} ─────────────────────────────────────────────────
+    // Routine IDs are formatted as "{uid}_{date}".
+    // Only the owner should access their own routine.
+    match /routines/{routineId} {
+      allow read, write: if isAuthenticated() &&
+        routineId.matches(request.auth.uid + '_.*');
+    }
+
+    // ── /counters/{counterId} ─────────────────────────────────────────────────
+    // Used by the registration number transaction during new user signup.
+    // Any authenticated user needs read/write (transaction runs during register).
+    match /counters/{counterId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // ── /settings/{settingId} ─────────────────────────────────────────────────
+    // • All authenticated users can read settings (e.g. network/WiFi SSID)
+    // • Only teachers can write settings
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isTeacher();
+    }
+  }
+}
