@@ -10,15 +10,29 @@ import API_BASE from "../lib/api";
 
 
 
-// ── Constants & Helpers ──────────────────────────────────────────────────────
+
+// ── getLocalDateStr ─────────────────────────────────────────────────────────
+// Returns a YYYY-MM-DD string in the device's LOCAL timezone.
+// NEVER use new Date().toISOString().split("T")[0] — that returns UTC, which
+// is wrong for IST (UTC+5:30) users after midnight local time.
+// Usage: getLocalDateStr()        → today in local timezone
+//        getLocalDateStr(someDate) → any Date in local timezone
+function getLocalDateStr(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// â”€â”€ Constants & Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CATEGORIES = {
-  Class: { color: "purple", icon: "🏫" },
-  Study: { color: "blue", icon: "📚" },
-  Break: { color: "green", icon: "☕" },
-  Meal: { color: "orange", icon: "🍱" },
-  Exercise: { color: "red", icon: "🏃" },
-  Personal: { color: "teal", icon: "🎨" },
-  Sleep: { color: "slate", icon: "🌙" }
+  Class: { color: "purple", icon: "ðŸ«" },
+  Study: { color: "blue", icon: "ðŸ“š" },
+  Break: { color: "green", icon: "â˜•" },
+  Meal: { color: "orange", icon: "ðŸ±" },
+  Exercise: { color: "red", icon: "ðŸƒ" },
+  Personal: { color: "teal", icon: "ðŸŽ¨" },
+  Sleep: { color: "slate", icon: "ðŸŒ™" }
 };
 
 const getCategoryStyles = (cat) => {
@@ -48,7 +62,7 @@ function timeToMinutes(timeStr) {
   return h * 60 + (m || 0);
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+// â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function DailyRoutine() {
   useTitle("Daily Routine");
   const { currentUser, userProfile } = useAuth();
@@ -74,7 +88,8 @@ export default function DailyRoutine() {
   }, [activeFocusIndex]);
 
   const timelineRefs = useRef([]);
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Use local-timezone date — toISOString() is UTC and breaks in IST
+  const todayStr = getLocalDateStr();
   const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
   // 1. Motivational Quote
@@ -92,10 +107,16 @@ export default function DailyRoutine() {
 
   // 2. Fetch Data (Routine + Streak)
   useEffect(() => {
-    if (!currentUser) return;
+    // Hard UID guard — never attempt Firestore ops without a confirmed uid
+    if (!currentUser?.uid) return;
+    const uid = currentUser.uid;
 
-    // Load Today's Routine
-    const routineRef = doc(db, "routines", `${currentUser.uid}_${todayStr}`);
+    // Load Today's Routine — ID MUST match rule: `{uid}_{YYYY-MM-DD}`
+    const routineId = `${uid}_${todayStr}`;
+    console.log("[Routine] UID:", uid);
+    console.log("[Routine] Reading routineId:", routineId);
+
+    const routineRef = doc(db, "routines", routineId);
     const unsubRoutine = onSnapshot(routineRef, (docSnap) => {
       if (docSnap.exists()) {
         setRoutine(docSnap.data().routine || []);
@@ -105,7 +126,7 @@ export default function DailyRoutine() {
       setLoading(false);
       setIndexBuilding(false);
     }, (error) => {
-      console.error("Routine Snapshot Error:", error);
+      console.error("[Routine] Snapshot error:", error.code, error.message);
       if (isIndexError(error)) {
         setIndexBuilding(true);
       } else {
@@ -114,56 +135,57 @@ export default function DailyRoutine() {
       setLoading(false);
     });
 
-    // Calculate Streak & Weekly Progress
+    // Stats: fetch last 30 days by direct doc IDs — no collection scan needed.
+    // The security rule matches on document ID ({uid}_date), so point-reads
+    // of `${uid}_${date}` always pass without requiring a Firestore index.
     const fetchStats = async () => {
       try {
-        const q = query(
-          collection(db, "routines"),
-          where("studentId", "==", currentUser.uid),
-          orderBy("date", "desc")
-        );
-        const snap = await safeGetDocs(q);
-        const allRoutines = snap.docs.map(d => d.data());
-
-        // Weekly: last 7 days
-        const last7 = [];
-        for (let i = 6; i >= 0; i--) {
+        const LOOKBACK = 30;
+        const fetchPromises = [];
+        for (let i = 0; i < LOOKBACK; i++) {
           const d = new Date();
           d.setDate(d.getDate() - i);
-          const ds = d.toISOString().split('T')[0];
-          const found = allRoutines.find(r => r.date === ds);
+          const ds = getLocalDateStr(d);
+          const docId = `${uid}_${ds}`;
+          fetchPromises.push(
+            getDoc(doc(db, "routines", docId)).then(snap =>
+              snap.exists() ? { ...snap.data(), _date: ds } : null
+            )
+          );
+        }
+        const results = await Promise.allSettled(fetchPromises);
+        const allRoutines = results
+          .filter(r => r.status === 'fulfilled' && r.value !== null)
+          .map(r => r.value);
+
+        const last7 = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(); d.setDate(d.getDate() - i);
+          const ds = getLocalDateStr(d);
+          const found = allRoutines.find(r => (r.date || r._date) === ds);
           last7.push({ date: ds, progress: found ? (found.completionPercentage || 0) : 0, isToday: i === 0 });
         }
         setWeeklyProgress(last7);
 
-        // Streak: consecutive days (today doesn't count until 50%)
         let currentStreak = 0;
         let checkDate = new Date();
-
-        const todayRoutine = allRoutines.find(r => r.date === todayStr);
+        const todayRoutine = allRoutines.find(r => (r.date || r._date) === todayStr);
         if (!todayRoutine || (todayRoutine.completionPercentage || 0) < 50) {
           checkDate.setDate(checkDate.getDate() - 1);
         }
-
-        for (let i = 0; i < 30; i++) { // Max lookback 30
-          const ds = checkDate.toISOString().split('T')[0];
-          const r = allRoutines.find(rout => rout.date === ds);
+        for (let i = 0; i < LOOKBACK; i++) {
+          const ds = getLocalDateStr(checkDate);
+          const r = allRoutines.find(rout => (rout.date || rout._date) === ds);
           if (r && (r.completionPercentage || 0) >= 50) {
-            currentStreak++;
-            checkDate.setDate(checkDate.getDate() - 1);
-          } else {
-            break;
-          }
+            currentStreak++; checkDate.setDate(checkDate.getDate() - 1);
+          } else { break; }
         }
         setStreak(currentStreak);
         setIndexBuilding(false);
       } catch (error) {
-        console.error("Stats Fetch Error:", error);
-        if (isIndexError(error)) {
-          setIndexBuilding(true);
-        } else {
-          setIndexError(error.message);
-        }
+        console.error("[Routine] Stats fetch error:", error.code, error.message);
+        if (isIndexError(error)) { setIndexBuilding(true); }
+        else { setIndexError(error.message); }
       }
     };
 
@@ -232,17 +254,27 @@ export default function DailyRoutine() {
 
   // 4. Persistence
   async function saveRoutine(newRoutine) {
-    if (!currentUser) return;
-    const completed = newRoutine.filter(t => t.status === 'completed').length;
+    // Hard guard — never write to Firestore without a confirmed uid
+    if (!currentUser?.uid) {
+      console.error("[Routine] saveRoutine called without authenticated user — aborting.");
+      return;
+    }
+    const uid = currentUser.uid;
+    const routineId = `${uid}_${todayStr}`;
+    console.log("[Routine] UID:", uid);
+    console.log("[Routine] Writing routineId:", routineId);
+
+    const completed = newRoutine.filter(t => t.status === "completed").length;
     const total = newRoutine.length;
     const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    await setDoc(doc(db, "routines", `${currentUser.uid}_${todayStr}`), {
-      studentId: currentUser.uid,
+    // setDoc with explicit ID — MUST match Firestore rule: `{uid}_{YYYY-MM-DD}`
+    await setDoc(doc(db, "routines", routineId), {
+      studentId: uid,
       date: todayStr,
       routine: newRoutine,
       completionPercentage: percent,
-      savedAt: serverTimestamp()
+      savedAt: serverTimestamp(),
     });
   }
 
@@ -266,7 +298,7 @@ export default function DailyRoutine() {
       description: "Click to edit details",
       category: "Personal",
       priority: "Medium",
-      icon: "📋",
+      icon: "ðŸ“‹",
       status: "pending"
     };
     await saveRoutine([...routine, newItem]);
@@ -345,7 +377,7 @@ export default function DailyRoutine() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8 pb-32">
-      {/* ── Header ── */}
+      {/* â”€â”€ Header â”€â”€ */}
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
@@ -360,10 +392,10 @@ export default function DailyRoutine() {
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
-          {/* 📊 Unified Stats Panel */}
+          {/* ðŸ“Š Unified Stats Panel */}
           <div className="glass-card p-5 flex items-center justify-between gap-6 border-slate-700/50 bg-slate-800/20 w-full md:w-auto shadow-xl">
             <div className="flex items-center gap-4 border-r border-white/10 pr-6">
-              <span className="text-4xl filter drop-shadow-[0_0_15px_rgba(245,158,11,0.4)]">🔥</span>
+              <span className="text-4xl filter drop-shadow-[0_0_15px_rgba(245,158,11,0.4)]">ðŸ”¥</span>
               <div>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Streak</p>
                 <p className="text-xl font-black text-slate-100">{streak} <span className="text-sm font-bold text-slate-500">Days</span></p>
@@ -387,7 +419,7 @@ export default function DailyRoutine() {
         </div>
       </div>
 
-      {/* ── Weekly Preview ── */}
+      {/* â”€â”€ Weekly Preview â”€â”€ */}
       <div className="flex justify-between gap-2 overflow-x-auto pb-4 scrollbar-hide">
         {weeklyProgress.map((day, i) => {
           const isToday = day.isToday;
@@ -405,13 +437,13 @@ export default function DailyRoutine() {
         })}
       </div>
 
-      {/* ── Main Content / Empty State ── */}
+      {/* â”€â”€ Main Content / Empty State â”€â”€ */}
       {routine.length === 0 && !generating ? (
         <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
           <div className="w-24 h-24 bg-violet-500/10 rounded-3xl flex items-center justify-center mb-8 border border-violet-500/20 shadow-2xl shadow-violet-500/10">
             <Sparkles size={48} className="text-violet-400 animate-pulse" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-100 mb-2">Build your perfect day ✨</h2>
+          <h2 className="text-2xl font-bold text-slate-100 mb-2">Build your perfect day âœ¨</h2>
           <p className="text-slate-400 max-w-xs mb-8 leading-relaxed">Let AI transform your timetable and goals into a high-productivity routine.</p>
           <button
             onClick={generateFullRoutine}
@@ -448,7 +480,7 @@ export default function DailyRoutine() {
             {generating && (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/40 backdrop-blur-[2px] rounded-3xl animate-fade-in">
                 <div className="bg-slate-900 p-8 rounded-3xl border border-white/5 flex flex-col items-center gap-4 shadow-2xl">
-                  <span className="text-4xl animate-bounce">🧠</span>
+                  <span className="text-4xl animate-bounce">ðŸ§ </span>
                   <p className="text-violet-300 font-bold tracking-widest uppercase text-xs animate-pulse">AI is planning your perfect day...</p>
                 </div>
               </div>
@@ -636,7 +668,7 @@ export default function DailyRoutine() {
               <Check size={48} className="text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-4xl font-black text-white mb-2 tracking-tight">DAY COMPLETE! 🥳</h2>
+              <h2 className="text-4xl font-black text-white mb-2 tracking-tight">DAY COMPLETE! ðŸ¥³</h2>
               <p className="text-emerald-200/60 font-medium">You followed your routine perfectly today.</p>
             </div>
             <div className="px-8 py-3 bg-emerald-600 text-white rounded-2xl font-black shadow-xl shadow-emerald-600/30">
